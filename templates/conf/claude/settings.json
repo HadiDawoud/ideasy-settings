@@ -1,0 +1,15 @@
+{
+    "env": {
+      "ANTHROPIC_BASE_URL": "https://litellm.sandbox.sovai-de.apps.ce.capgemini.com",
+      "ANTHROPIC_AUTH_TOKEN": "$[secret:ai-api-key]",
+      "ANTHROPIC_MODEL": "code",
+      "ANTHROPIC_DEFAULT_SONNET_MODEL": "chat",
+      "ANTHROPIC_DEFAULT_OPUS_MODEL": "complex_tasks",
+      "ANTHROPIC_DEFAULT_HAIKU_MODEL": "vision",
+      "NODE_EXTRA_CA_CERTS": "$[IDE_HOME]/settings/certificates/CapgeminiPKIRootChain.cer",
+      "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+    },
+    "enabledPlugins": {
+      "superpowers@claude-plugins-official": true
+    }
+  }
