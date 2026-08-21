@@ -1,0 +1,143 @@
+= IDEasy Team Setup
+
+This guide is intended for developers joining the IDEasy team.
+It explains the recommended setup path first and provides troubleshooting information afterward.
+
+== Prerequisites
+
+Before you start, make sure that:
+
+* IDEasy is installed and the `ide` command is available in your terminal.
+* Git is installed.
+* You have access to the internal GitLab instance at https://assets.engine.capgemini.com[assets.engine.capgemini.com].
+
+== Create a personal access token
+
+The IDEasy team settings are stored in an internal GitLab repository.
+To access this repository via HTTPS, create a personal access token:
+
+. Open https://assets.engine.capgemini.com/-/user_settings/personal_access_tokens[Personal access tokens in the internal GitLab instance].
+. Create a new token.
+. Select the scopes required for repository access:
+** `read_repository`
+** `write_repository`
+** `api`
+. Create the token and copy it immediately.
+
+IMPORTANT: Treat the token like a password. Do not commit it to a repository, add it to a configuration file, or share it with other people.
+
+== Create the IDEasy project
+
+Open a terminal and run:
+
+[source,bash]
+----
+ide create IDEasy https://assets.engine.capgemini.com/engine_hohwille/ideasy-settings.git
+----
+
+IDEasy uses the settings from the internal repository to create and configure the project environment.
+
+When Git asks for credentials, enter:
+
+* *Username:* Your Capgemini email address or GitLab username.
+* *Password:* The personal access token created in the previous step. Do not enter your normal login password.
+
+Depending on your Git credential configuration, the credentials may be stored securely by your credential manager, so you may not be asked again.
+
+After the command completes successfully, the IDEasy development environment is ready.
+
+== Continue with IDEasy contribution setup
+
+For the remaining steps, including cloning or forking the source repository, configuring remotes, building the project, and reviewing the contribution guidelines, see:
+
+* https://github.com/devonfw/IDEasy/tree/main/documentation/contributing/[IDEasy contributing documentation]
+
+NOTE: This internal page can link to public GitHub documentation. Public GitHub documentation must not link back to internal Capgemini resources.
+
+== Troubleshooting
+
+Use this section only if the setup described above does not complete successfully.
+
+=== Verify the settings repository remote
+
+Navigate to the settings repository and inspect its remote configuration:
+
+[source,bash]
+----
+cd "$IDE_HOME/settings"
+git remote -v
+----
+
+The expected remote is:
+
+[source,text]
+----
+origin  https://assets.engine.capgemini.com/engine_hohwille/ideasy-settings.git (fetch)
+origin  https://assets.engine.capgemini.com/engine_hohwille/ideasy-settings.git (push)
+----
+
+If `origin` points to another repository, correct it with:
+
+[source,bash]
+----
+git remote set-url origin https://assets.engine.capgemini.com/engine_hohwille/ideasy-settings.git
+git remote -v
+----
+
+=== Clear expired or incorrect HTTPS credentials
+
+If Git reports an authentication failure although the remote URL is correct, remove the stored credential:
+
+[source,bash]
+----
+printf "protocol=https\nhost=assets.engine.capgemini.com\n\n" | git credential reject
+----
+
+Then test access again:
+
+[source,bash]
+----
+git fetch origin
+----
+
+When prompted, enter your Capgemini email address or GitLab username as the username and your personal access token as the password.
+
+=== Personal access token problems
+
+Authentication can fail when:
+
+* the token has expired;
+* the token was revoked;
+* the token was copied incorrectly;
+* the required repository scopes are missing;
+* the GitLab account does not have access to the settings repository; or
+* an outdated token is still stored by the Git credential manager.
+
+Create a new token if required, clear the previously stored credential, and retry `git fetch origin`.
+
+=== Configure upstream tracking
+
+If Git reports that the local `main` branch has no upstream branch, run:
+
+[source,bash]
+----
+git checkout main
+git branch --set-upstream-to=origin/main main
+----
+
+Then retry the update:
+
+[source,bash]
+----
+ide update
+----
+
+=== Setup was created with the wrong settings repository
+
+If the project was initially created with an incorrect settings repository:
+
+. Correct the `origin` URL as described above.
+. Verify access with `git fetch origin`.
+. Run `ide update` from the IDEasy project directory.
+
+If the update still fails, review the complete Git error message to determine whether the problem concerns authentication, repository access, the remote URL, network connectivity, or branch tracking.
