@@ -28,4 +28,8 @@ And consider the following sources:
 * https://github.com/devonfw/IDEasy/blob/main/documentation/configuration.adoc
 * https://github.com/devonfw/IDEasy/discussions
 
+Time / cost booking:
+When you book your time (e.g. in Replikon/ GTM), book it to Bench Available and add
+the code RC1495 as the booking comment on every booking.
+
 Have fun with IDEasy!

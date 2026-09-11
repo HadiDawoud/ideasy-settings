@@ -1,62 +1,250 @@
 = IDEasy Team Setup
+:toc:
+toc::[]
 
-This guide is intended for developers joining the IDEasy team.
-It explains the recommended setup path first and provides troubleshooting information afterward.
+This guide takes a new team member from a fresh machine to a working IDEasy development environment for the IDEasy project itself.
+It is written to be handed to you as-is: follow the steps top to bottom and you will be able to open the code in your IDE, build it, and run the CLI.
+
+If you just want to know *what you need* and *where everything ends up*, start with link:#prerequisites[Prerequisites] and link:#where-things-live[Where things live].
+If a step does not work, link:#troubleshooting[Troubleshooting] is at the end.
+
+NOTE: This guide lives in our internal Capgemini GitLab and may link to public GitHub documentation.
+Public GitHub documentation must not link back to internal Capgemini resources, so the public docs will not cover our internal GitLab settings repository.
 
 == Prerequisites
 
-Before you start, make sure that:
+Before you start, sort out the accounts and tools you need and create your fork of the IDEasy code.
+You do the account, token and fork setup *first* (once); everything else in this guide is then driven by `ide` commands.
 
-* IDEasy is installed and the `ide` command is available in your terminal.
-* Git is installed.
-* You have access to the internal GitLab instance at https://assets.engine.capgemini.com[assets.engine.capgemini.com].
+* *Git* is installed and configured. +
+If you do not have it yet, install it from https://git-scm.com/download/[git-scm.com]. +
+Make sure your Git identity matches the GitHub account you will use to contribute (see next step):
++
+[source,bash]
+----
+git config --global user.name "«your-name»"
+git config --global user.email "«your-github-email»"
+----
 
-== Create a personal access token
+* *A GitHub account* (https://github.com/[github.com]). +
+    This is where the IDEasy code lives and where you will fork, branch, and open pull requests. +
+If you do not have an account yet, create one and then *send your GitHub login name via Teams chat to https://github.com/hohwille[hohwille]* so he can grant you the permissions you need in the `devonfw` organization. +
+If you also use your Capgemini login as your GitHub login, your *operating-system username* (the `«username»` in `C:\Users\«username»`) usually matches your GitHub login — that is the value you will use as `GITHUB_USER` in the steps below.
 
-The IDEasy team settings are stored in an internal GitLab repository.
-To access this repository via HTTPS, create a personal access token:
+* *A fork of the IDEasy repository* on GitHub. +
+This is where you will push your branches and open pull requests from, so create it before you run `ide create`. +
+On the https://github.com/devonfw/IDEasy[IDEasy] repository page, open the split button to the right of *Watch* (between *Watch* and *Star*) and choose **Create a new fork**. +
+NOTE: If you are new to Git basics, the https://github.com/firstcontributions/first-contributions[first-contributions guide] is a good reference for forking, branching, and the Git commands used in this guide.
 
-. Open https://assets.engine.capgemini.com/-/user_settings/personal_access_tokens[Personal access tokens in the internal GitLab instance].
+* *Access to the internal GitLab* at https://assets.engine.capgemini.com[assets.engine.capgemini.com]. +
+This is where our *team settings* repository lives (the one this page is part of).
+You need access to the `engine_hohwille/ideasy-settings` project.
+If you cannot log in, this is an access problem — ask in the team channel before going further.
+
+* *A personal access token for the internal GitLab.* +
+We clone the settings repository over HTTPS, so Git needs a token instead of your password.
+Create one **before** you run `ide create`:
++
+. Open https://assets.engine.capgemini.com/-/user_settings/personal_access_tokens[Personal access tokens].
 . Create a new token.
-. Select the scopes required for repository access:
-** `read_repository`
-** `write_repository`
-** `api`
-. Create the token and copy it immediately.
+. Select the scopes `read_repository`, `write_repository`, and `api`.
+. Create the token and copy it immediately — GitLab shows it only once.
++
+IMPORTANT: Treat the token like a password.
+Do not commit it, paste it into a shared file, or share it with anyone.
 
-IMPORTANT: Treat the token like a password. Do not commit it to a repository, add it to a configuration file, or share it with other people.
+* *IDEasy* is installed and the `ide` command works in your terminal. +
+Run `ide -v` to confirm.
+If it is not installed yet, follow the link:#install-ideasy[Install IDEasy] section below first — everything in this guide assumes `ide` is available.
+
+== How the pieces fit together
+
+There are a few moving parts, so it helps to know which come preconfigured and which you actually set up yourself:
+
+* The **settings repository** and the **team project variables** come preconfigured — `ide create` pulls them in for you, so you do not need to set them up.
+* What you *actively* set up in this guide is: your GitHub **fork** (with `GITHUB_USER` as its user), your **personal** variable overrides (optional), and your **AI tooling**.
+
+`GITHUB_USER` is simply your GitHub login.
+IDEasy uses it in the team settings to clone your fork and set up the right remotes for you — you do not configure remotes by hand.
+If your GitHub login is the same as your Capgemini / operating-system username, `GITHUB_USER` falls back to your OS username (`$USER`) automatically.
+
+Throughout this guide, `$IDE_HOME` is your IDEasy home directory (e.g. `C:\Users\«username»\projects\IDEasy` on Windows).
+You can find it with `ide status`, or print it with `echo $IDE_HOME` (bash) / `echo %IDE_HOME%` (cmd).
+
+== Install IDEasy
+
+Install IDEasy once, so that `ide create` works in the next section.
+The fastest way is the one-line installer — it downloads the latest release,
+extracts it, and adds the `ide` command to your shell:
+
+. Open a bash terminal (on Windows: `Git Bash` from the Start Menu).
+. Run:
++
+[source,bash]
+----
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/devonfw/IDEasy/main/install.sh)"
+----
++
+or download the package manually for your platform from the https://github.com/devonfw/IDEasy/releases[releases page] (MSI for Windows, PKG for macOS) and run it.
+
+. Confirm `ide` is available:
++
+[source,bash]
+----
+ide -v
+----
++
+NOTE: When you used the one-line installer, your *current* terminal will not pick up the
+new `ide` command until its configuration is re-read.
+run `source ~/.bashrc` (or open a new terminal ), this is a common reason `ide create`
+appears to "not be found" right after installing.
+
+For platform-specific notes (macOS Gatekeeper, proxy) see the
+https://github.com/devonfw/IDEasy/blob/main/documentation/setup.adoc[full IDEasy setup guide].
 
 == Create the IDEasy project
 
-Open a terminal and run:
+Now let IDEasy build your environment from the team settings.
 
+. Open a terminal (on Windows open `Git Bash` from the Start Menu) and run:
++
 [source,bash]
 ----
 ide create IDEasy https://assets.engine.capgemini.com/engine_hohwille/ideasy-settings.git
 ----
++
+Wait until it finishes — it takes several minutes the first time because it installs tools and plugins, clones the IDEasy code repository into your main workspace, and then builds it (the team settings define `build_cmd=mvn clean install`, which also runs the tests).
+A successful build ends with a `BUILD SUCCESS` line.
 
-IDEasy uses the settings from the internal repository to create and configure the project environment.
+. If Git asks for credentials (it will when it clones the settings or the code over HTTPS), enter:
++
+* *Username:* your Capgemini email address or GitLab username.
+* *Password:* the personal access token from the prerequisites step.
++
+Do not enter your normal login password.
+Depending on your Git credential configuration these may be stored securely, so you might not be asked again.
 
-When Git asks for credentials, enter:
+TIP: For the *code* repository (GitHub) the credentials are your GitHub ones, not the GitLab token.
+If you are behind a corporate proxy or VPN and downloads fail, see the https://github.com/devonfw/IDEasy/blob/main/documentation/variables.adoc[variables guide] for `HTTP_VERSIONS` and proxy hints.
 
-* *Username:* Your Capgemini email address or GitLab username.
-* *Password:* The personal access token created in the previous step. Do not enter your normal login password.
+== Set up the code repository for contributing
 
-Depending on your Git credential configuration, the credentials may be stored securely by your credential manager, so you may not be asked again.
+To contribute, the remotes must point at your **fork** (which you created in the link:#prerequisites[prerequisites step]).
 
-After the command completes successfully, the IDEasy development environment is ready.
+`ide create` already cloned **your fork** of the IDEasy code (using `GITHUB_USER`) into `$IDE_HOME/workspaces/main/IDEasy`, and added the official repository as `upstream` for you:
 
-== Continue with IDEasy contribution setup
+* `origin` → your fork (where you push and open pull requests from)
+* `upstream` → the official `devonfw/IDEasy` (where you pull updates from)
 
-For the remaining steps, including cloning or forking the source repository, configuring remotes, building the project, and reviewing the contribution guidelines, see:
+NOTE: Make a quick verification that everything is set correctly using:
 
-* https://github.com/devonfw/IDEasy/tree/main/documentation/contributing/[IDEasy contributing documentation]
+[source,bash]
+----
+git remote -v
+----
 
-NOTE: This internal page can link to public GitHub documentation. Public GitHub documentation must not link back to internal Capgemini resources.
+== Open the project in your IDE
+
+Start your IDE through `ide` so it picks up the project configuration:
+
+[source,bash]
+----
+ide intellij
+----
+
+(`ide eclipse`, `ide vscode`, `ide pycharm`, and `ide android-studio` work the same way.)
+
+The repository is imported into the IDE automatically during setup (the team settings configure the `import` variable for the IDEs to import into).
+If the Maven structure is not picked up automatically, do *not* work around it by hand — that would hide the problem.
+Instead file an issue, because the import is expected to work out of the box.
+
+== (Optional) Configure your personal variables
+
+You do not *need* to do this, the team settings in `settings/ide.properties` already work fine.
+But IDEasy also reads a **personal** variables file at `$IDE_HOME/conf/ide.properties`, which lives only on your machine and is *never committed*.
+Use it to override a value for yourself (e.g. to match how you work or to fix a local network issue).
+Do not touch `settings/ide.properties` unless you are changing something for the whole team (that is a settings-repo change and goes through Git).
+
+The file is created for you on first run; open it and uncomment the lines you need.
+For the full list of variables and examples (e.g. proxy/VPN settings, `PREFERRED_GIT_PROTOCOL`, `M2_REPO`) see the https://github.com/devonfw/IDEasy/blob/main/documentation/variables.adoc[variables guide] and the header comment at the top of `conf/ide.properties`.
+
+The one you will most likely set is `GITHUB_USER` — your GitHub login, which IDEasy uses to clone your fork (see the link:#set-up-the-code-repository-for-contributing[previous step]).
+If your GitHub login is the same as your OS username you can reference it instead of typing it:
+
+[source,properties]
+----
+# your GitHub login:
+GITHUB_USER=«your-github-login»
+# or, if it matches your OS username:
+#GITHUB_USER=${USER}
+----
+
+NOTE: Change personal variables only if you understand the effect.
+A wrong value in `conf/ide.properties` affects only your machine, but it can still break your build — when in doubt, leave it as-is and ask in the team channel.
+
+== (Optional) Test Linux on Windows
+
+If you develop on Windows we strongly recommend also following the
+https://github.com/devonfw/IDEasy/blob/main/documentation/contributing/testing-linux-on-windows.adoc[Testing IDEasy Linux on Windows] guide.
+It sets up a virtual Linux environment with IDEasy in it, which lets you reproduce and test Linux-specific issues — useful for everyone, not only Windows developers.
+
+== Set up AI tooling
+
+AI plugins (e.g. GitHub Copilot for IntelliJ, Copilot for VS Code) are installed automatically from the settings during `ide create`.
+For **Claude Code** we also have the company-provided installer *binary* of the Capgemini Sovereign AI Platform,
+see the link:https://docs.sovai-de.apps.ce.capgemini.com/sovai/platform-user/agentic-coding/claude-code.html[Claude Code installation docs].
+
+. Install Claude Code.
+For the current use in IDEasy it is sufficient to install it through the `ide install` command (the team settings already include it in `IDE_TOOLS`, so `ide create` installs it for you).
+
+. Let IDEasy apply the configuration.
+On `ide create` (and `ide update`) IDEasy copies the `templates/conf/claude/settings.json` template from the settings repository into your `$IDE_HOME/conf/claude/` folder, and Claude Code reads it from there.
+It sets the `ANTHROPIC_BASE_URL`, the model aliases and the CA certificate for you, and pulls in your AI token through the `$[secret:ai-api-key]` function as `ANTHROPIC_AUTH_TOKEN`.
+So the token is asked for by a function — you never type the endpoint, the model list, or the API key by hand.
+
+. Confirm it works:
++
+[source,bash]
+----
+claude --version
+----
++
+Then start it (`claude`) and you are set.
+
+NOTE: If the installer or your authentication does not behave as expected, re-read the internal docs page above and check in the team channel — everyone uses the same setup, so this is an easy question to clear there.
+
+== Where things live
+
+Study the https://github.com/devonfw/IDEasy/blob/main/documentation/structure.adoc[structure of IDEasy] to understand where you can find what (here `my-project` will stand for `IDEasy`).
+
+Useful everyday commands once the setup is complete:
+
+[source,bash]
+----
+icd -p IDEasy -r        # activate the IDEasy project and go to IDEasy git repo
+ide status              # show what is installed / active
+ide update              # re-apply the settings (pull latest settings + repos)
+ide help                # full command reference
+----
+
+== What to read next
+
+Your environment is ready.
+Before you pick your first issue, get familiar with the project.
+The canonical developer documentation lives in the public GitHub repository (read it online or from your local clone under `documentation/`):
+
+* The link:https://github.com/devonfw/IDEasy/blob/main/documentation/contributing/setup.adoc[contributing setup guide] (upstream) — the public version of this guide, useful for a cross-check.
+* The link:https://github.com/devonfw/IDEasy/blob/main/documentation/contributing/coding-conventions.adoc[coding conventions] and the link:https://github.com/devonfw/IDEasy/blob/main/documentation/contributing/DoD.adoc[Definition of Done] — read these *before* you write code.
+* The link:https://github.com/devonfw/IDEasy/blob/main/documentation/contributing/contributing.adoc[contributing guide] — the day-to-day branch/commit/pull-request workflow.
+* The link:https://github.com/devonfw/IDEasy/blob/main/documentation/images/design.puml[design diagram] (`design.puml`, needs a PlantUML plugin) for an architectural overview; then open the key types and read their JavaDoc.
+
+When you are ready to implement something, pick a ticket from our issue board at https://github.com/orgs/devonfw/projects/5[devonfw projects] and continue with the link:https://github.com/devonfw/IDEasy/blob/main/documentation/contributing/issue.adoc[issue guide] and the link:https://github.com/devonfw/IDEasy/blob/main/documentation/contributing/contributing.adoc[contributing guide].
+
+Welcome to the IDEasy team!
 
 == Troubleshooting
 
-Use this section only if the setup described above does not complete successfully.
+Use this section only if the setup above does not complete cleanly.
 
 === Verify the settings repository remote
 
@@ -76,13 +264,26 @@ origin  https://assets.engine.capgemini.com/engine_hohwille/ideasy-settings.git 
 origin  https://assets.engine.capgemini.com/engine_hohwille/ideasy-settings.git (push)
 ----
 
-If `origin` points to another repository, correct it with:
+If `origin` points at a different repository, correct it:
 
 [source,bash]
 ----
 git remote set-url origin https://assets.engine.capgemini.com/engine_hohwille/ideasy-settings.git
 git remote -v
 ----
+
+=== Check the code repository remotes
+
+In the code repository you want `origin` to be your fork and `upstream` to be the official repo:
+
+[source,bash]
+----
+cd "$IDE_HOME/workspaces/main/IDEasy"
+git remote -v
+----
+
+Expected: `origin` → `https://github.com/«your-github-login»/IDEasy.git` (your `GITHUB_USER`) and `upstream` → `https://github.com/devonfw/IDEasy.git`.
+If `origin` does not point at your fork, make sure `GITHUB_USER` is set correctly in `conf/ide.properties` (see the link:#optional-configure-your-personal-variables[personal variables] section), then re-apply the settings with `ide update`.
 
 === Clear expired or incorrect HTTPS credentials
 
@@ -140,4 +341,4 @@ If the project was initially created with an incorrect settings repository:
 . Verify access with `git fetch origin`.
 . Run `ide update` from the IDEasy project directory.
 
-If the update still fails, review the complete Git error message to determine whether the problem concerns authentication, repository access, the remote URL, network connectivity, or branch tracking.
+If the update still fails, read the complete Git error message to determine whether the problem concerns authentication, repository access, the remote URL, network connectivity, or branch tracking.
