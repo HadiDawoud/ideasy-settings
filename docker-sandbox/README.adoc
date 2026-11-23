@@ -1,0 +1,4 @@
+= Docker Sandbox for AI Coding Agents
+
+The full documentation of this feature can be found at
+link:https://github.com/devonfw/IDEasy/blob/main/documentation/docker-sandbox.adoc[IDEasy: docker-sandbox.adoc].
