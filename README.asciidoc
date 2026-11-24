@@ -11,3 +11,14 @@ This repository is also used by https://github.com/devonfw/ide[devonfw-ide].
 However, this uses the `devonfw-ide` branch of this repository by default.
 Please note that `IDEasy` is the successor of `devonfw-ide`.
 From 2025 on projects should switch to the new product `IDEasy` that has many advantages.
+
+== Upstream sync
+
+This fork tracks https://github.com/devonfw/ide-settings[devonfw/ide-settings] on GitHub.
+A scheduled GitLab CI job (see `.gitlab-ci.yml`) regularly merges upstream `main` into this repository
+while keeping the fork's own commits. The job can also be triggered manually. It does nothing when
+upstream has no new commits and fails the pipeline if a merge conflict needs manual resolution.
+Since this project does not accept direct pushes from outside, the merge is pushed to the
+https://github.com/HadiDawoud/ideasy-settings[GitHub mirror] and merged via a merge request against
+the `github` project remote. Syncs are plain merges, never squashed or rebased, so only genuinely new
+upstream commits are merged on the next run.
