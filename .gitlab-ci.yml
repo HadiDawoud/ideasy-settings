@@ -1,0 +1,64 @@
+# devonfw/IDEasy#2788: periodically merge upstream devonfw/ide-settings (GitHub)
+# into this fork, preserving the fork's own commits.
+#
+# This GitLab project does not allow direct pushes from outside, so the merge
+# result is pushed to the public GitHub mirror https://github.com/HadiDawoud/ideasy-settings
+# instead. GitLab then sees the mirror's branches through the project's `github`
+# remote (Settings -> Repository -> Remotes: name `github`,
+# URL `https://github.com/HadiDawoud/ideasy-settings.git`), and the merge request
+# is opened via the GitLab API with the source branch `github:<branch>`.
+#
+# Requires the following masked CI/CD variables:
+# - GITHUB_TOKEN: a GitHub personal access token with the `public_repo` scope,
+#   used for the push to the mirror.
+# - GITLAB_PROJECT_TOKEN: a project access token (Settings -> Repository ->
+#   Project access tokens) with the `api` scope, used to open the merge request.
+#
+# Run the job on a scheduled pipeline (Settings -> CI/CD -> Schedules), e.g.
+# weekly, or trigger it manually via the play button.
+
+sync-upstream:
+  stage: test
+  script:
+    - git config user.name "IDEasy upstream sync"
+    - git config user.email "ci@ideasy.local"
+    - git remote add upstream https://github.com/devonfw/ide-settings.git
+    - git fetch upstream main
+    - |
+      if [ "$(git rev-list --count HEAD..upstream/main)" = "0" ]; then
+        echo "Nothing to sync: upstream main has no new commits. Skipping."
+        exit 0
+      fi
+    - git checkout -b "sync-upstream/$(date +%Y%m%d)"
+    - |
+      if ! git merge --no-ff upstream/main --no-edit -m "sync: merge upstream devonfw/ide-settings main into the fork ($(date +%Y-%m-%d))"; then
+        echo "ERROR: Merge conflict between the fork and upstream devonfw/ide-settings main. Resolve the conflict manually and retry the sync." >&2
+        exit 1
+      fi
+    - git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/HadiDawoud/ideasy-settings.git" "HEAD:refs/heads/sync-upstream/$(date +%Y%m%d)"
+    - |
+      BRANCH="sync-upstream/$(date +%Y%m%d)"
+      SOURCE_BRANCH="github:${BRANCH}"
+      SOURCE_BRANCH_ENC=$(printf '%s' "${SOURCE_BRANCH}" | sed 's/:/%3A/g; s#/#%2F#g')
+      # Update the open MR if the sync re-ran on the same day, otherwise open a new one.
+      EXISTING_MR_ID=$(curl --silent --header "PRIVATE-TOKEN: ${GITLAB_PROJECT_TOKEN}" \
+        "https://assets.engine.capgemini.com/api/v4/projects/engine%2Fhohwille%2Fideasy-settings/merge_requests?state=opened&source_branch=${SOURCE_BRANCH_ENC}" \
+        | head -c 200000 | tr -d '\n ' | sed 's/},{/}\n{/g' | head -n 1 | grep -o '"iid":[0-9]*' | cut -d: -f2)
+      if [ -n "${EXISTING_MR_ID}" ]; then
+        echo "Merge request !${EXISTING_MR_ID} already open for ${SOURCE_BRANCH}; updating its description."
+        curl --silent --request PUT \
+          --header "PRIVATE-TOKEN: ${GITLAB_PROJECT_TOKEN}" \
+          --header "Content-Type: application/json" \
+          --data "{\"description\": \"Automated merge of upstream devonfw/ide-settings (GitHub) main into this fork. The fork's own commits are preserved; this is a plain merge, never a squash or rebase. Please review and merge with a plain merge commit.\"}" \
+          "https://assets.engine.capgemini.com/api/v4/projects/engine%2Fhohwille%2Fideasy-settings/merge_requests/${EXISTING_MR_ID}"
+      else
+        echo "Opening merge request for ${SOURCE_BRANCH}."
+        curl --silent --request POST \
+          --header "PRIVATE-TOKEN: ${GITLAB_PROJECT_TOKEN}" \
+          --header "Content-Type: application/json" \
+          --data "{\"source_branch\": \"${SOURCE_BRANCH}\", \"target_branch\": \"main\", \"title\": \"sync: upstream devonfw/ide-settings ($(date +%Y-%m-%d))\", \"description\": \"Automated merge of upstream devonfw/ide-settings (GitHub) main into this fork. The fork's own commits are preserved; this is a plain merge, never a squash or rebase. Please review and merge with a plain merge commit.\"}" \
+          "https://assets.engine.capgemini.com/api/v4/projects/engine%2Fhohwille%2Fideasy-settings/merge_requests"
+      fi
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
